@@ -15,8 +15,18 @@ server {
     gzip_proxied any;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 
-    # 静的アセットのキャッシュ
-    location ~* \.(css|js|svg|png|jpg|ico)$ {
+    # 静的アセットのキャッシュ制御（更新を即座に反映させる）
+    location ~* \.(html)$ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    location ~* \.(css|js)$ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    location ~* \.(svg|png|jpg|ico)$ {
         root /usr/share/nginx/html;
         expires 7d;
         add_header Cache-Control "public, no-transform";

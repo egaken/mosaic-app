@@ -58,6 +58,13 @@
       this.isSpacePressed = false;
       this.imageFileName = 'edited_image';
 
+      // クリック追跡（トラックパッド等のダブルクリック確実検出用）
+      this.lastClickTime = 0;
+      this.lastClickX = 0;
+      this.lastClickY = 0;
+      this.fitToastTimer = null;
+      this.animatingFrame = null;
+
       this.bindEvents();
 
       // ウィンドウサイズ初期化＆自動サンプル画像ロード
@@ -70,6 +77,7 @@
       this.canvas = document.getElementById('canvas');
       this.dropOverlay = document.getElementById('drop-overlay');
       this.comparingBadge = document.getElementById('comparing-badge');
+      this.fitToast = document.getElementById('fit-toast');
 
       // ヘッダー要素
       this.btnUndo = document.getElementById('btn-undo');
@@ -283,6 +291,7 @@
       window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
       window.addEventListener('mouseup', (e) => this.handleMouseUp(e));
       this.viewport.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
+      this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
 
       // ズーム（ホイール）
       this.viewport.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
@@ -290,7 +299,7 @@
       // ズームバーボタン
       this.btnZoomIn.addEventListener('click', () => this.zoom(1.25));
       this.btnZoomOut.addEventListener('click', () => this.zoom(0.8));
-      this.btnZoomFit.addEventListener('click', () => this.fitToScreen(true));
+      this.btnZoomFit.addEventListener('click', () => this.fitToScreen(true, true));
       this.btnZoom100.addEventListener('click', () => this.zoom100(true));
 
       // キーボードショートカット
@@ -541,7 +550,7 @@
     /**
      * 画面中央にぴったりフィット（余白を考慮した快適な配置）
      */
-    fitToScreen(animate = false) {
+    fitToScreen(animate = false, showToast = false) {
       if (!this.engine.image) return;
       this.engine.resize();
       const vpRect = this.viewport.getBoundingClientRect();
@@ -562,6 +571,10 @@
       const targetPanX = padLeft + (availW - imgW * targetScale) / 2;
       const targetPanY = padTop + (availH - imgH * targetScale) / 2;
 
+      if (showToast) {
+        this.showFitToast('🎯 画面中央にフィットしました');
+      }
+
       if (animate) {
         this.animateViewport(targetScale, targetPanX, targetPanY, 260);
       } else {
@@ -571,6 +584,36 @@
         this.updateZoomDisplay();
         this.render();
       }
+    }
+
+    /**
+     * 画面中央フィット通知トーストの表示
+     */
+    showFitToast(text = '画面中央にフィットしました') {
+      if (!this.fitToast) return;
+      const span = this.fitToast.querySelector('span');
+      if (span) span.textContent = text;
+      this.fitToast.classList.add('show');
+      if (this.fitToastTimer) clearTimeout(this.fitToastTimer);
+      this.fitToastTimer = setTimeout(() => {
+        this.fitToast.classList.remove('show');
+      }, 1500);
+    }
+
+    /**
+     * クリック波紋エフェクトの生成
+     */
+    createRipple(clientX, clientY) {
+      if (!this.viewport) return;
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      const vpRect = this.viewport.getBoundingClientRect();
+      ripple.style.left = `${clientX - vpRect.left}px`;
+      ripple.style.top = `${clientY - vpRect.top}px`;
+      this.viewport.appendChild(ripple);
+      setTimeout(() => {
+        if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+      }, 500);
     }
 
     zoom100(animate = true) {
@@ -651,6 +694,10 @@
     // ==========================================
     handleMouseDown(e) {
       if (!this.engine.image || this.isComparing) return;
+
+      this.interaction.mouseDownScreenX = e.clientX;
+      this.interaction.mouseDownScreenY = e.clientY;
+      this.interaction.mouseDownTime = performance.now();
 
       if (e.button === 1 || this.isSpacePressed || this.activeTool === 'pan') {
         this.interaction.mode = 'panning';
@@ -780,14 +827,22 @@
     handleMouseUp(e) {
       if (!this.engine.image || this.isComparing) return;
 
+      const clickDistance = Math.hypot(
+        e.clientX - (this.interaction.mouseDownScreenX ?? e.clientX),
+        e.clientY - (this.interaction.mouseDownScreenY ?? e.clientY)
+      );
+      const isStaticClick = clickDistance < 10; // ほぼ動いていないクリック
+
       if (this.interaction.mode === 'panning') {
         this.interaction.mode = 'idle';
         this.updateCursor();
+        if (isStaticClick) this.checkCustomDoubleClick(e);
         return;
       }
 
       if (this.interaction.mode === 'drawing') {
         const prev = this.interaction.previewObject;
+        let objectCreated = false;
         if (prev) {
           const norm = this.engine.normalizeRect(prev.x, prev.y, prev.width, prev.height);
           const minSize = prev.shape === 'freehand' ? 4 : 8;
@@ -805,6 +860,7 @@
             this.history.push(this.objects);
             this.objects.push(newObj);
             this.setSelectedId(newObj.id);
+            objectCreated = true;
           }
         }
 
@@ -812,6 +868,11 @@
         this.interaction.mode = 'idle';
         this.render();
         this.updateCursor();
+
+        // 静止クリックで新規図形が作成されなかった場合はダブルクリック候補として追跡
+        if (isStaticClick && !objectCreated) {
+          this.checkCustomDoubleClick(e);
+        }
         return;
       }
 
@@ -827,18 +888,62 @@
         this.interaction.draggedSnapshot = null;
         this.interaction.resizeHandle = null;
         this.updateCursor();
+        return;
       }
+
+      if (isStaticClick) {
+        this.checkCustomDoubleClick(e);
+      }
+    }
+
+    /**
+     * トラックパッドやマウスの微小な指ズレでも確実に捉えるカスタムダブルクリック判定
+     */
+    checkCustomDoubleClick(e) {
+      const now = performance.now();
+      const timeDiff = now - this.lastClickTime;
+      const dist = Math.hypot(e.clientX - this.lastClickX, e.clientY - this.lastClickY);
+
+      if (timeDiff > 40 && timeDiff < 420 && dist < 30) {
+        // ダブルクリック成立！
+        this.lastClickTime = 0;
+        this.triggerDoubleClick(e.clientX, e.clientY);
+      } else {
+        this.lastClickTime = now;
+        this.lastClickX = e.clientX;
+        this.lastClickY = e.clientY;
+      }
+    }
+
+    /**
+     * 中央復帰ダブルクリックの実行処理（波紋アニメーション＋スムーズ中央フィット＋トースト）
+     */
+    triggerDoubleClick(clientX, clientY) {
+      if (!this.engine.image || this.isComparing) return;
+
+      const now = performance.now();
+      // 直近350ms以内の多重発火防止
+      if (this.lastFitTriggerTime && now - this.lastFitTriggerTime < 350) return;
+      this.lastFitTriggerTime = now;
+
+      const p = this.screenToImageCoords(clientX, clientY);
+      // オブジェクト上でない背景のクリックで中央フィット
+      const hit = this.engine.hitTest(this.objects, p.x, p.y);
+      if (hit) return;
+
+      // プレビュー等の不要状態をリセット
+      this.interaction.previewObject = null;
+      this.interaction.mode = 'idle';
+
+      // 波紋演出
+      this.createRipple(clientX, clientY);
+      // 中央復帰アニメーション＋トースト表示
+      this.fitToScreen(true, true);
     }
 
     handleDoubleClick(e) {
       if (!this.engine.image || this.isComparing) return;
-
-      const p = this.screenToImageCoords(e.clientX, e.clientY);
-      // オブジェクト上でない背景のダブルクリックで中央フィット
-      const hit = this.engine.hitTest(this.objects, p.x, p.y);
-      if (!hit) {
-        this.fitToScreen(true);
-      }
+      this.triggerDoubleClick(e.clientX, e.clientY);
     }
 
     // ==========================================
@@ -1141,7 +1246,7 @@
       const k = e.key.toLowerCase();
       if (k === '0' || (cmd && k === '0')) {
         e.preventDefault();
-        this.fitToScreen(true);
+        this.fitToScreen(true, true);
         return;
       }
       if (k === 'v') this.setActiveTool('select');

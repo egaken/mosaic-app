@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>モザイク加工くん - ミニマル＆モダンな画像プライバシー編集ツール</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232563eb%22/><text y=%22.9em%22 font-size=%2280%22 x=%2210%22 fill=%22white%22>▦</text></svg>">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20260920_3">
 </head>
 <body>
   <div class="app-root">
@@ -158,6 +158,16 @@
             <circle cx="12" cy="12" r="3"/>
           </svg>
           <span>元画像を表示中 (比較中)</span>
+        </div>
+
+        <!-- 中央フィット通知トースト -->
+        <div id="fit-toast" class="fit-toast">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+          <span>画面中央にフィットしました</span>
         </div>
 
         <!-- ドロップ案内オーバーレイ（ドラッグ中のみ表示） -->
@@ -381,8 +391,8 @@
   </div>
 
   <!-- スクリプトの読み込み -->
-  <script src="js/history.js"></script>
-  <script src="js/canvasEngine.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/history.js?v=20260920_3"></script>
+  <script src="js/canvasEngine.js?v=20260920_3"></script>
+  <script src="js/app.js?v=20260920_3"></script>
 </body>
 </html>

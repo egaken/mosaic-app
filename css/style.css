@@ -972,3 +972,61 @@ kbd {
   align-items: center;
   gap: 4px;
 }
+
+/* 中央フィット通知トースト */
+.fit-toast {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background-color: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 50;
+}
+
+.fit-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.fit-toast svg {
+  color: #38bdf8;
+}
+
+/* ダブルクリック波紋エフェクト */
+.click-ripple {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  margin-top: -20px;
+  border-radius: 50%;
+  border: 2px solid rgba(37, 99, 235, 0.6);
+  background-color: rgba(37, 99, 235, 0.15);
+  pointer-events: none;
+  animation: ripple-anim 0.45s ease-out forwards;
+  z-index: 45;
+}
+
+@keyframes ripple-anim {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
