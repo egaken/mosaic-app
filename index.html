@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>モザイク加工くん - ミニマル＆モダンな画像プライバシー編集ツール</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232563eb%22/><text y=%22.9em%22 font-size=%2280%22 x=%2210%22 fill=%22white%22>▦</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-root">
+    <!-- ヘッダー（上部ナビゲーション） -->
+    <header class="app-header">
+      <div class="header-section header-left">
+        <div class="logo">
+          <div class="logo-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2"/>
+              <path d="M7 7h.01M7 12h.01M7 17h.01M12 7h.01M12 12h.01M12 17h.01M17 7h.01M17 12h.01M17 17h.01"/>
+            </svg>
+          </div>
+          <h1 class="logo-title">モザイク加工くん</h1>
+          <span class="app-version">v2.1</span>
+        </div>
+      </div>
+
+      <div class="header-section header-center">
+        <!-- 履歴操作（Undo/Redo） -->
+        <div class="pill-group">
+          <button id="btn-undo" class="pill-btn" title="元に戻す (Cmd/Ctrl+Z)" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v6h6"/>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+            </svg>
+            <span>元に戻す</span>
+          </button>
+          <button id="btn-redo" class="pill-btn" title="やり直す (Cmd/Ctrl+Shift+Z)" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 7v6h-6"/>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
+            </svg>
+            <span>やり直す</span>
+          </button>
+        </div>
+
+        <!-- ビフォー／アフター比較ボタン（長押し） -->
+        <button id="btn-compare" class="btn btn-compare" title="長押ししている間、元画像を表示します (Tabキーでも可)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>比較 (長押し)</span>
+        </button>
+      </div>
+
+      <div class="header-section header-right">
+        <!-- 画像読み込みボタン -->
+        <label for="file-input" class="btn btn-secondary" title="別の画像を開く">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" x2="12" y1="3" y2="15"/>
+          </svg>
+          画像を開く
+        </label>
+        <input type="file" id="file-input" accept="image/*" style="display: none;">
+
+        <button id="btn-sample" class="btn btn-ghost" title="テスト用サンプル画像を読み込む">
+          サンプル画像
+        </button>
+
+        <!-- 保存ボタン（PNG / JPEG） -->
+        <div class="dropdown-container">
+          <div class="btn-split-group">
+            <button id="btn-save-main" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
+              </svg>
+              保存 (PNG)
+            </button>
+            <button id="btn-save-dropdown" class="btn btn-primary btn-chevron" title="フォーマットを選択">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          <div id="save-menu" class="dropdown-popover">
+            <button class="popover-item" data-format="png">
+              <span class="item-title">PNG 形式で保存</span>
+              <span class="item-sub">元画像解像度そのまま・最高画質</span>
+            </button>
+            <button class="popover-item" data-format="jpeg">
+              <span class="item-title">JPEG 形式で保存 (横幅1200px)</span>
+              <span class="item-sub">アスペクト比維持・Web/SNS最適化</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- メインコンテンツ領域 -->
+    <div class="app-body">
+      <!-- 左側：垂直ツールバー -->
+      <nav class="v-toolbar">
+        <button class="tool-btn active" data-tool="select" title="選択・移動・変形 (V)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 3 7 18 3-7 7-3L3 3z"/>
+          </svg>
+          <span class="tooltip">選択 (V)</span>
+        </button>
+
+        <button class="tool-btn" data-tool="rect" title="四角形ツール (R)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+          </svg>
+          <span class="tooltip">四角形 (R)</span>
+        </button>
+
+        <button class="tool-btn" data-tool="ellipse" title="円形・楕円ツール (O)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+          </svg>
+          <span class="tooltip">円形・楕円 (O)</span>
+        </button>
+
+        <button class="tool-btn" data-tool="freehand" title="フリーハンドペンツール (P)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+            <circle cx="11" cy="11" r="2"/>
+          </svg>
+          <span class="tooltip">フリーハンド (P)</span>
+        </button>
+
+        <div class="tool-divider"></div>
+
+        <button class="tool-btn" data-tool="pan" title="手のひら・画面移動 (H / スペース長押し)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+            <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+            <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+          </svg>
+          <span class="tooltip">画面移動 (H / Space)</span>
+        </button>
+      </nav>
+
+      <!-- 中央：高精細キャンバスビューポート -->
+      <main class="viewport" id="viewport">
+        <canvas id="canvas"></canvas>
+
+        <!-- 比較中バッジ（長押し中のみ表示） -->
+        <div id="comparing-badge" class="comparing-badge" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>元画像を表示中 (比較中)</span>
+        </div>
+
+        <!-- ドロップ案内オーバーレイ（ドラッグ中のみ表示） -->
+        <div id="drop-overlay" class="drop-overlay">
+          <div class="drop-overlay-box">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+              <circle cx="9" cy="9" r="2"/>
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+            </svg>
+            <h3>画像をドロップして読み込み</h3>
+          </div>
+        </div>
+
+        <!-- 画面右下：ズームコントローラー -->
+        <div class="zoom-floating-bar">
+          <button id="btn-zoom-out" class="zoom-btn" title="縮小 (マウスホイール手前)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <span id="zoom-indicator" class="zoom-indicator">100%</span>
+          <button id="btn-zoom-in" class="zoom-btn" title="拡大 (マウスホイール奥)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <div class="zoom-divider"></div>
+          <button id="btn-zoom-fit" class="zoom-text-btn" title="画面全体に合わせる">全体</button>
+          <button id="btn-zoom-100" class="zoom-text-btn" title="等倍表示">100%</button>
+        </div>
+
+        <!-- 操作ガイドトースト（画面下部） -->
+        <div class="floating-hint">
+          <span>💡 Tabキー長押しで元画像と比較 / Space+ドラッグで移動</span>
+        </div>
+      </main>
+
+      <!-- 右側：プロパティサイドバー -->
+      <aside class="prop-sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">加工スタイル</h2>
+          <span id="selection-status-badge" class="badge" style="display: none;">選択中</span>
+        </div>
+
+        <div class="sidebar-body">
+          <!-- 逆モザイク（背景ぼかし）モードカード -->
+          <div class="feature-card bg-blur-card">
+            <div class="feature-header">
+              <div class="feature-title-wrap">
+                <span class="feature-badge">NEW</span>
+                <span class="feature-title">逆モザイク (背景ぼかし)</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="switch-bg-blur">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <p class="feature-desc">囲んだ場所以外の背景全体をぼかして主役を際立たせます</p>
+            <div id="bg-blur-slider-wrap" class="param-row mt-2" style="display: none;">
+              <div class="param-header">
+                <span class="param-title">背景のぼかし強度</span>
+                <span id="label-bg-blur" class="param-badge">16 px</span>
+              </div>
+              <input type="range" id="slider-bg-blur" min="4" max="32" value="16" step="2" class="range-slider">
+            </div>
+          </div>
+
+          <!-- スタイル選択（5択：モザイク・ぼかし・黒塗り・白塗り・スタンプ） -->
+          <div class="section">
+            <label class="section-label">隠し方スタイル</label>
+            <div class="style-grid">
+              <button class="style-card active" data-style="mosaic" title="モザイク（ピクセル化）">
+                <div class="style-icon-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="8" height="8"/>
+                    <rect x="13" y="3" width="8" height="8"/>
+                    <rect x="3" y="13" width="8" height="8"/>
+                    <rect x="13" y="13" width="8" height="8"/>
+                  </svg>
+                </div>
+                <span class="style-name">モザイク</span>
+              </button>
+
+              <button class="style-card" data-style="blur" title="すりガラス風ぼかし">
+                <div class="style-icon-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/>
+                    <circle cx="12" cy="12" r="5" stroke-dasharray="2 2"/>
+                  </svg>
+                </div>
+                <span class="style-name">ぼかし</span>
+              </button>
+
+              <button class="style-card" data-style="stamp" title="絵文字スタンプ">
+                <div class="style-icon-box emoji-box">
+                  <span id="active-emoji-preview">😎</span>
+                </div>
+                <span class="style-name">スタンプ</span>
+              </button>
+
+              <button class="style-card" data-style="fill-black" title="黒塗り（目線バー）">
+                <div class="style-icon-box color-pill bg-black"></div>
+                <span class="style-name">黒塗り</span>
+              </button>
+
+              <button class="style-card" data-style="fill-white" title="白塗り（目線バー）">
+                <div class="style-icon-box color-pill bg-white border"></div>
+                <span class="style-name">白塗り</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 絵文字パレット（スタンプ選択時のみ表示） -->
+          <div id="emoji-palette-section" class="section" style="display: none;">
+            <label class="section-label">スタンプを選択</label>
+            <div class="emoji-grid">
+              <button class="emoji-btn active" data-emoji="😎">😎</button>
+              <button class="emoji-btn" data-emoji="🐱">🐱</button>
+              <button class="emoji-btn" data-emoji="🌸">🌸</button>
+              <button class="emoji-btn" data-emoji="🙈">🙈</button>
+              <button class="emoji-btn" data-emoji="🐶">🐶</button>
+              <button class="emoji-btn" data-emoji="⭐">⭐</button>
+              <button class="emoji-btn" data-emoji="💖">💖</button>
+              <button class="emoji-btn" data-emoji="🤐">🤐</button>
+              <button class="emoji-btn" data-emoji="🕶️">🕶️</button>
+              <button class="emoji-btn" data-emoji="🔒">🔒</button>
+            </div>
+          </div>
+
+          <!-- パラメータ調整スライダー -->
+          <div class="section slider-group">
+            <!-- モザイク粗さ -->
+            <div id="row-mosaic" class="param-row">
+              <div class="param-header">
+                <span class="param-title">タイルの粗さ</span>
+                <span id="label-mosaic" class="param-badge">16 px</span>
+              </div>
+              <input type="range" id="slider-mosaic" min="4" max="48" value="16" step="2" class="range-slider">
+              <div class="slider-marks">
+                <span>細かめ</span>
+                <span>標準</span>
+                <span>粗め</span>
+              </div>
+            </div>
+
+            <!-- ぼかし強度 -->
+            <div id="row-blur" class="param-row" style="display: none;">
+              <div class="param-header">
+                <span class="param-title">ぼかしの強さ</span>
+                <span id="label-blur" class="param-badge">12 px</span>
+              </div>
+              <input type="range" id="slider-blur" min="4" max="32" value="12" step="2" class="range-slider">
+              <div class="slider-marks">
+                <span>弱</span>
+                <span>標準</span>
+                <span>強</span>
+              </div>
+            </div>
+
+            <!-- ペンの太さ -->
+            <div id="row-brush" class="param-row">
+              <div class="param-header">
+                <span class="param-title">ペンの太さ（フリーハンド）</span>
+                <span id="label-brush" class="param-badge">24 px</span>
+              </div>
+              <input type="range" id="slider-brush" min="8" max="64" value="24" step="2" class="range-slider">
+              <div class="slider-marks">
+                <span>細</span>
+                <span>標準</span>
+                <span>太</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- オブジェクト選択時専用アクション -->
+          <div id="selection-panel" class="section selection-panel" style="display: none;">
+            <div class="selection-notice">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <span>枠をドラッグして移動、角を引いて拡大縮小できます</span>
+            </div>
+            <button id="btn-delete" class="btn btn-danger">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+              </svg>
+              選択中の加工を削除 (Delete)
+            </button>
+          </div>
+
+          <!-- 操作ショートカット一覧 -->
+          <div class="shortcuts-box">
+            <h3 class="shortcuts-title">キーボードショートカット</h3>
+            <div class="shortcut-rows">
+              <div class="shortcut-row"><span>元画像と比較</span><kbd>Tab (長押し)</kbd></div>
+              <div class="shortcut-row"><span>選択ツール</span><kbd>V</kbd></div>
+              <div class="shortcut-row"><span>四角形 / 円形</span><span><kbd>R</kbd> / <kbd>O</kbd></span></div>
+              <div class="shortcut-row"><span>ペン</span><kbd>P</kbd></div>
+              <div class="shortcut-row"><span>画面移動</span><span class="space-kbd"><kbd>Space</kbd> + ドラッグ</span></div>
+              <div class="shortcut-row"><span>元に戻す</span><kbd>Cmd+Z</kbd></div>
+              <div class="shortcut-row"><span>削除</span><kbd>Delete</kbd></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- スクリプトの読み込み -->
+  <script src="js/history.js"></script>
+  <script src="js/canvasEngine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
