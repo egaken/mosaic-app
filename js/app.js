@@ -282,6 +282,7 @@
       this.viewport.addEventListener('mousedown', (e) => this.handleMouseDown(e));
       window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
       window.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+      this.viewport.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
 
       // ズーム（ホイール）
       this.viewport.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
@@ -289,8 +290,8 @@
       // ズームバーボタン
       this.btnZoomIn.addEventListener('click', () => this.zoom(1.25));
       this.btnZoomOut.addEventListener('click', () => this.zoom(0.8));
-      this.btnZoomFit.addEventListener('click', () => this.fitToScreen());
-      this.btnZoom100.addEventListener('click', () => this.zoom100());
+      this.btnZoomFit.addEventListener('click', () => this.fitToScreen(true));
+      this.btnZoom100.addEventListener('click', () => this.zoom100(true));
 
       // キーボードショートカット
       window.addEventListener('keydown', (e) => this.handleKeyDown(e));
@@ -480,45 +481,126 @@
     }
 
     // ==========================================
-    // ズーム＆パン操作
+    // ズーム＆パン操作 & スムーズアニメーション
     // ==========================================
-    fitToScreen() {
+    animateViewport(targetScale, targetPanX, targetPanY, duration = 260) {
+      if (this.animatingFrame) {
+        cancelAnimationFrame(this.animatingFrame);
+        this.animatingFrame = null;
+      }
+
+      const startScale = this.scale;
+      const startPanX = this.panX;
+      const startPanY = this.panY;
+      const startTime = performance.now();
+
+      const step = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1.0);
+        // イーズアウト（吸い付くように減速: easeOutCubic）
+        const ease = 1 - Math.pow(1 - progress, 3);
+
+        this.scale = startScale + (targetScale - startScale) * ease;
+        this.panX = startPanX + (targetPanX - startPanX) * ease;
+        this.panY = startPanY + (targetPanY - startPanY) * ease;
+
+        this.updateZoomDisplay();
+        this.render();
+
+        if (progress < 1.0) {
+          this.animatingFrame = requestAnimationFrame(step);
+        } else {
+          this.animatingFrame = null;
+        }
+      };
+
+      this.animatingFrame = requestAnimationFrame(step);
+    }
+
+    /**
+     * 画像が画面外へ完全に消え去るのを防ぐガード（境界リミット）
+     */
+    clampPan(panX, panY, scale) {
+      if (!this.engine.image) return { panX, panY };
+      const vpRect = this.viewport.getBoundingClientRect();
+      const imgW = this.engine.image.naturalWidth * scale;
+      const imgH = this.engine.image.naturalHeight * scale;
+      const minVisible = 80; // 画面内に最低限残るピクセル数
+
+      const minPanX = minVisible - imgW;
+      const maxPanX = vpRect.width - minVisible;
+      const minPanY = minVisible - imgH;
+      const maxPanY = vpRect.height - minVisible;
+
+      return {
+        panX: Math.min(Math.max(panX, minPanX), maxPanX),
+        panY: Math.min(Math.max(panY, minPanY), maxPanY),
+      };
+    }
+
+    /**
+     * 画面中央にぴったりフィット（余白を考慮した快適な配置）
+     */
+    fitToScreen(animate = false) {
       if (!this.engine.image) return;
       this.engine.resize();
       const vpRect = this.viewport.getBoundingClientRect();
-      const pad = 60;
-      const availW = vpRect.width - pad * 2;
-      const availH = vpRect.height - pad * 2;
+
+      // 左側ツールバー（幅56px + 左20px）と右下ズームバーを考慮した快適な作業領域
+      const padLeft = 84;
+      const padRight = 36;
+      const padTop = 40;
+      const padBottom = 60;
+
+      const availW = Math.max(100, vpRect.width - (padLeft + padRight));
+      const availH = Math.max(100, vpRect.height - (padTop + padBottom));
 
       const imgW = this.engine.image.naturalWidth;
       const imgH = this.engine.image.naturalHeight;
 
-      this.scale = Math.min(availW / imgW, availH / imgH, 1.0);
-      this.panX = (vpRect.width - imgW * this.scale) / 2;
-      this.panY = (vpRect.height - imgH * this.scale) / 2;
+      const targetScale = Math.min(availW / imgW, availH / imgH, 1.0);
+      const targetPanX = padLeft + (availW - imgW * targetScale) / 2;
+      const targetPanY = padTop + (availH - imgH * targetScale) / 2;
 
-      this.updateZoomDisplay();
-      this.render();
+      if (animate) {
+        this.animateViewport(targetScale, targetPanX, targetPanY, 260);
+      } else {
+        this.scale = targetScale;
+        this.panX = targetPanX;
+        this.panY = targetPanY;
+        this.updateZoomDisplay();
+        this.render();
+      }
     }
 
-    zoom100() {
+    zoom100(animate = true) {
       if (!this.engine.image) return;
       const vpRect = this.viewport.getBoundingClientRect();
       const imgW = this.engine.image.naturalWidth;
       const imgH = this.engine.image.naturalHeight;
 
-      this.scale = 1.0;
-      this.panX = (vpRect.width - imgW) / 2;
-      this.panY = (vpRect.height - imgH) / 2;
+      const targetScale = 1.0;
+      const padLeft = 84;
+      const padRight = 36;
+      const availW = Math.max(100, vpRect.width - (padLeft + padRight));
+      const targetPanX = padLeft + (availW - imgW) / 2;
+      const targetPanY = (vpRect.height - imgH) / 2;
 
-      this.updateZoomDisplay();
-      this.render();
+      if (animate) {
+        this.animateViewport(targetScale, targetPanX, targetPanY, 240);
+      } else {
+        this.scale = targetScale;
+        this.panX = targetPanX;
+        this.panY = targetPanY;
+        this.updateZoomDisplay();
+        this.render();
+      }
     }
 
     zoom(factor, mouseScreenX = null, mouseScreenY = null) {
       if (!this.engine.image) return;
       const oldScale = this.scale;
-      let newScale = Math.min(Math.max(0.1, oldScale * factor), 10.0);
+      let newScale = Math.min(Math.max(0.15, oldScale * factor), 10.0);
 
       if (Math.abs(newScale - 1.0) < 0.04 && Math.abs(oldScale - 1.0) > 0.04) {
         newScale = 1.0;
@@ -528,8 +610,13 @@
       const cx = mouseScreenX ?? vpRect.width / 2;
       const cy = mouseScreenY ?? vpRect.height / 2;
 
-      this.panX = cx - (cx - this.panX) * (newScale / oldScale);
-      this.panY = cy - (cy - this.panY) * (newScale / oldScale);
+      let panX = cx - (cx - this.panX) * (newScale / oldScale);
+      let panY = cy - (cy - this.panY) * (newScale / oldScale);
+
+      // 移動限界ブレーキ
+      const clamped = this.clampPan(panX, panY, newScale);
+      this.panX = clamped.panX;
+      this.panY = clamped.panY;
       this.scale = newScale;
 
       this.updateZoomDisplay();
@@ -632,8 +719,13 @@
       if (this.interaction.mode === 'panning') {
         const dx = e.clientX - this.interaction.screenStartX;
         const dy = e.clientY - this.interaction.screenStartY;
-        this.panX = this.interaction.panStartX + dx;
-        this.panY = this.interaction.panStartY + dy;
+        const clamped = this.clampPan(
+          this.interaction.panStartX + dx,
+          this.interaction.panStartY + dy,
+          this.scale
+        );
+        this.panX = clamped.panX;
+        this.panY = clamped.panY;
         this.render();
         return;
       }
@@ -735,6 +827,17 @@
         this.interaction.draggedSnapshot = null;
         this.interaction.resizeHandle = null;
         this.updateCursor();
+      }
+    }
+
+    handleDoubleClick(e) {
+      if (!this.engine.image || this.isComparing) return;
+
+      const p = this.screenToImageCoords(e.clientX, e.clientY);
+      // オブジェクト上でない背景のダブルクリックで中央フィット
+      const hit = this.engine.hitTest(this.objects, p.x, p.y);
+      if (!hit) {
+        this.fitToScreen(true);
       }
     }
 
@@ -1036,6 +1139,11 @@
       }
 
       const k = e.key.toLowerCase();
+      if (k === '0' || (cmd && k === '0')) {
+        e.preventDefault();
+        this.fitToScreen(true);
+        return;
+      }
       if (k === 'v') this.setActiveTool('select');
       else if (k === 'r') this.setActiveTool('rect');
       else if (k === 'o') this.setActiveTool('ellipse');

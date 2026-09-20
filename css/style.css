@@ -553,12 +553,24 @@ button, input {
   color: var(--color-primary);
 }
 
-/* ガイドトースト */
+.btn-fit-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary);
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.btn-fit-highlight:hover {
+  background-color: var(--color-primary-subtle);
+}
+
+/* ガイドトースト（左下に配置してズームバーとの重なりを解消） */
 .floating-hint {
   position: absolute;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 84px;
   background-color: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
   color: white;
@@ -566,8 +578,9 @@ button, input {
   padding: 6px 14px;
   border-radius: var(--radius-full);
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
   z-index: 20;
+  box-shadow: var(--shadow-sm);
 }
 
 /* ==========================================================================
