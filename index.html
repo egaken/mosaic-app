@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>モザイク加工くん - ミニマル＆モダンな画像プライバシー編集ツール</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232563eb%22/><text y=%22.9em%22 font-size=%2280%22 x=%2210%22 fill=%22white%22>▦</text></svg>">
-  <link rel="stylesheet" href="css/style.css?v=20260920_3">
+  <link rel="stylesheet" href="css/style.css?v=20260920_4">
 </head>
 <body>
   <div class="app-root">
@@ -197,7 +197,7 @@
             </svg>
           </button>
           <div class="zoom-divider"></div>
-          <button id="btn-zoom-fit" class="zoom-text-btn btn-fit-highlight" title="画面中央に合わせる (背景ダブルクリック / 0キー)">
+          <button id="btn-zoom-fit" class="zoom-text-btn btn-fit-highlight" title="画面中央に合わせる (0キー)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <circle cx="12" cy="12" r="3"/>
@@ -209,7 +209,7 @@
 
         <!-- 操作ガイドトースト（画面下部） -->
         <div class="floating-hint">
-          <span>💡 背景ダブルクリックで中央に戻る / 0キーでフィット / Tab長押しで比較</span>
+          <span>💡 🎯中央フィット または 0キーで中央に戻る / Tab長押しで比較</span>
         </div>
       </main>
 
@@ -375,7 +375,7 @@
           <div class="shortcuts-box">
             <h3 class="shortcuts-title">キーボードショートカット</h3>
             <div class="shortcut-rows">
-              <div class="shortcut-row"><span>中央に戻す</span><span class="space-kbd"><kbd>背景Wクリック</kbd> / <kbd>0</kbd></span></div>
+              <div class="shortcut-row"><span>中央に戻す</span><kbd>0</kbd></div>
               <div class="shortcut-row"><span>元画像と比較</span><kbd>Tab (長押し)</kbd></div>
               <div class="shortcut-row"><span>選択ツール</span><kbd>V</kbd></div>
               <div class="shortcut-row"><span>四角形 / 円形</span><span><kbd>R</kbd> / <kbd>O</kbd></span></div>
@@ -391,8 +391,8 @@
   </div>
 
   <!-- スクリプトの読み込み -->
-  <script src="js/history.js?v=20260920_3"></script>
-  <script src="js/canvasEngine.js?v=20260920_3"></script>
-  <script src="js/app.js?v=20260920_3"></script>
+  <script src="js/history.js?v=20260920_4"></script>
+  <script src="js/canvasEngine.js?v=20260920_4"></script>
+  <script src="js/app.js?v=20260920_4"></script>
 </body>
 </html>
