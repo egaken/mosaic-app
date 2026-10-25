@@ -62,6 +62,17 @@
       this.fitToastTimer = null;
       this.animatingFrame = null;
 
+      // タッチ＆ピンチ操作状態
+      this.touchState = {
+        pinching: false,
+        startDist: 0,
+        startScale: 1.0,
+        startPanX: 0,
+        startPanY: 0,
+        midX: 0,
+        midY: 0,
+      };
+
       this.bindEvents();
 
       // ウィンドウサイズ初期化＆自動サンプル画像ロード
@@ -121,6 +132,12 @@
       this.btnZoomFit = document.getElementById('btn-zoom-fit');
       this.btnZoom100 = document.getElementById('btn-zoom-100');
       this.zoomIndicator = document.getElementById('zoom-indicator');
+
+      // モバイル用要素
+      this.propSidebar = document.getElementById('prop-sidebar');
+      this.btnToggleStyle = document.getElementById('btn-toggle-style');
+      this.btnCloseSidebar = document.getElementById('btn-close-sidebar');
+      this.sidebarBackdrop = document.getElementById('sidebar-backdrop');
     }
 
     bindEvents() {
@@ -300,6 +317,50 @@
       // キーボードショートカット
       window.addEventListener('keydown', (e) => this.handleKeyDown(e));
       window.addEventListener('keyup', (e) => this.handleKeyUp(e));
+
+      // モバイル：スタイル設定ボトムシートの開閉
+      if (this.btnToggleStyle && this.propSidebar) {
+        this.btnToggleStyle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleMobileSidebar();
+        });
+      }
+      if (this.btnCloseSidebar) {
+        this.btnCloseSidebar.addEventListener('click', () => {
+          this.closeMobileSidebar();
+        });
+      }
+      if (this.sidebarBackdrop) {
+        this.sidebarBackdrop.addEventListener('click', () => {
+          this.closeMobileSidebar();
+        });
+      }
+
+      // タッチ操作（キャンバス上：1本指描画／移動、2本指ピンチズーム＆パン）
+      this.viewport.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+      this.viewport.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+      this.viewport.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+      this.viewport.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
+
+      // 比較ボタンのタッチ長押し対応
+      this.btnCompare.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.isComparing = true;
+        this.btnCompare.classList.add('active');
+        this.comparingBadge.style.display = 'flex';
+        this.render();
+      }, { passive: false });
+
+      const endTouchCompare = () => {
+        if (this.isComparing) {
+          this.isComparing = false;
+          this.btnCompare.classList.remove('active');
+          this.comparingBadge.style.display = 'none';
+          this.render();
+        }
+      };
+      this.btnCompare.addEventListener('touchend', endTouchCompare);
+      this.btnCompare.addEventListener('touchcancel', endTouchCompare);
     }
 
     // ==========================================
@@ -550,11 +611,12 @@
       this.engine.resize();
       const vpRect = this.viewport.getBoundingClientRect();
 
-      // 左側ツールバー（幅56px + 左20px）と右下ズームバーを考慮した快適な作業領域
-      const padLeft = 84;
-      const padRight = 36;
-      const padTop = 40;
-      const padBottom = 60;
+      // PCとスマホで安全余白を最適化（PC版の配置は100%維持）
+      const isMobile = window.innerWidth <= 768;
+      const padLeft = isMobile ? 16 : 84;
+      const padRight = isMobile ? 16 : 36;
+      const padTop = isMobile ? 16 : 40;
+      const padBottom = isMobile ? 76 : 60;
 
       const availW = Math.max(100, vpRect.width - (padLeft + padRight));
       const availH = Math.max(100, vpRect.height - (padTop + padBottom));
@@ -601,9 +663,11 @@
       const imgW = this.engine.image.naturalWidth;
       const imgH = this.engine.image.naturalHeight;
 
+      const isMobile = window.innerWidth <= 768;
+      const padLeft = isMobile ? 16 : 84;
+      const padRight = isMobile ? 16 : 36;
+
       const targetScale = 1.0;
-      const padLeft = 84;
-      const padRight = 36;
       const availW = Math.max(100, vpRect.width - (padLeft + padRight));
       const targetPanX = padLeft + (availW - imgW) / 2;
       const targetPanY = (vpRect.height - imgH) / 2;
@@ -616,6 +680,34 @@
         this.panY = targetPanY;
         this.updateZoomDisplay();
         this.render();
+      }
+    }
+
+    // ==========================================
+    // モバイル用ボトムシート（設定ドロワー）開閉
+    // ==========================================
+    toggleMobileSidebar() {
+      if (!this.propSidebar) return;
+      if (this.propSidebar.classList.contains('open')) {
+        this.closeMobileSidebar();
+      } else {
+        this.openMobileSidebar();
+      }
+    }
+
+    openMobileSidebar() {
+      if (!this.propSidebar) return;
+      this.propSidebar.classList.add('open');
+      if (this.sidebarBackdrop) {
+        this.sidebarBackdrop.classList.add('active');
+      }
+    }
+
+    closeMobileSidebar() {
+      if (!this.propSidebar) return;
+      this.propSidebar.classList.remove('open');
+      if (this.sidebarBackdrop) {
+        this.sidebarBackdrop.classList.remove('active');
       }
     }
 
@@ -849,6 +941,104 @@
         this.interaction.draggedSnapshot = null;
         this.interaction.resizeHandle = null;
         this.updateCursor();
+      }
+    }
+
+    // ==========================================
+    // タッチ＆ピンチ インタラクション（モバイル対応）
+    // ==========================================
+    handleTouchStart(e) {
+      if (!this.engine.image || this.isComparing) return;
+      e.preventDefault();
+
+      if (e.touches.length === 1) {
+        this.touchState.pinching = false;
+        const t = e.touches[0];
+        this.handleMouseDown({
+          clientX: t.clientX,
+          clientY: t.clientY,
+          button: 0,
+        });
+      } else if (e.touches.length >= 2) {
+        // 2本指タッチ：ピンチズーム＆パン開始
+        this.touchState.pinching = true;
+        // 1本指での描画途中であればキャンセル
+        if (this.interaction.mode === 'drawing') {
+          this.interaction.previewObject = null;
+          this.interaction.mode = 'idle';
+          this.render();
+        }
+
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        this.touchState.startDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        this.touchState.startScale = this.scale;
+        this.touchState.startPanX = this.panX;
+        this.touchState.startPanY = this.panY;
+        this.touchState.midX = (t1.clientX + t2.clientX) / 2;
+        this.touchState.midY = (t1.clientY + t2.clientY) / 2;
+      }
+    }
+
+    handleTouchMove(e) {
+      if (!this.engine.image || this.isComparing) return;
+      e.preventDefault();
+
+      if (this.touchState.pinching && e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        if (this.touchState.startDist < 5) return;
+
+        const ratio = currentDist / this.touchState.startDist;
+        let newScale = Math.min(Math.max(0.15, this.touchState.startScale * ratio), 10.0);
+
+        // 2本指の中点
+        const curMidX = (t1.clientX + t2.clientX) / 2;
+        const curMidY = (t1.clientY + t2.clientY) / 2;
+
+        const vpRect = this.viewport.getBoundingClientRect();
+        const pivotX = this.touchState.midX - vpRect.left;
+        const pivotY = this.touchState.midY - vpRect.top;
+
+        // スケール変更に伴うパン座標の計算
+        let panX = pivotX - (pivotX - this.touchState.startPanX) * (newScale / this.touchState.startScale);
+        let panY = pivotY - (pivotY - this.touchState.startPanY) * (newScale / this.touchState.startScale);
+
+        // 2本指の平行移動分も加算
+        panX += (curMidX - this.touchState.midX);
+        panY += (curMidY - this.touchState.midY);
+
+        const clamped = this.clampPan(panX, panY, newScale);
+        this.scale = newScale;
+        this.panX = clamped.panX;
+        this.panY = clamped.panY;
+
+        this.updateZoomDisplay();
+        this.render();
+      } else if (!this.touchState.pinching && e.touches.length === 1) {
+        const t = e.touches[0];
+        this.handleMouseMove({
+          clientX: t.clientX,
+          clientY: t.clientY,
+        });
+      }
+    }
+
+    handleTouchEnd(e) {
+      if (!this.engine.image) return;
+      e.preventDefault();
+
+      if (this.touchState.pinching) {
+        if (e.touches.length === 0) {
+          this.touchState.pinching = false;
+        }
+      } else {
+        const t = e.changedTouches[0] || {};
+        this.handleMouseUp({
+          clientX: t.clientX ?? 0,
+          clientY: t.clientY ?? 0,
+        });
       }
     }
 

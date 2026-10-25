@@ -1004,3 +1004,306 @@ kbd {
 .fit-toast svg {
   color: #38bdf8;
 }
+
+/* ==========================================================================
+   モバイル専用要素のデフォルトスタイル（PC画面では非表示）
+   ========================================================================== */
+.mobile-only {
+  display: none !important;
+}
+
+/* ==========================================================================
+   レスポンシブデザイン：スマートフォン＆タブレット最適化 (<= 768px)
+   ※ PC版のデザイン・使い勝手は100%そのまま維持します
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* モバイル専用要素の表示 */
+  .mobile-only {
+    display: flex !important;
+  }
+
+  /* 安全領域 (iPhoneなどのノッチ・ホームバー) を考慮 */
+  .app-root {
+    height: 100dvh;
+    height: 100vh;
+  }
+
+  /* ------------------------------------------------------------------------
+     1. 上部ヘッダーのコンパクト化（1行にスッキリ配置）
+     ------------------------------------------------------------------------ */
+  .app-header {
+    height: 48px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .header-left {
+    flex: initial;
+    gap: 6px;
+  }
+
+  .logo {
+    gap: 6px;
+  }
+
+  .logo-badge {
+    width: 28px;
+    height: 28px;
+  }
+
+  .logo-badge svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .logo-title {
+    font-size: 13px;
+  }
+
+  .app-version {
+    display: none !important;
+  }
+
+  .header-center {
+    flex: 1;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .pill-group {
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .pill-btn {
+    padding: 5px 7px;
+  }
+
+  .pill-btn .btn-text {
+    display: none !important;
+  }
+
+  .btn-compare {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .btn-compare .btn-text {
+    display: none !important;
+  }
+
+  .header-right {
+    flex: initial;
+    gap: 6px;
+  }
+
+  /* サンプル画像ボタンはスマホヘッダーでは非表示にして保存ボタンの領域を確保 */
+  .header-sample-btn {
+    display: none !important;
+  }
+
+  /* 画像を開くボタン：アイコンのみ */
+  label.btn-secondary[for="file-input"] {
+    padding: 6px 9px;
+  }
+
+  label.btn-secondary[for="file-input"] .btn-text {
+    display: none !important;
+  }
+
+  /* 保存ボタングループ */
+  .btn-split-group .btn-primary {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .btn-split-group .btn-chevron {
+    padding: 6px 7px;
+  }
+
+  .dropdown-popover {
+    right: 0;
+    left: auto;
+    width: 260px;
+    max-width: 90vw;
+  }
+
+  /* ------------------------------------------------------------------------
+     2. キャンバス（Viewport）を画面いっぱいに広げる
+     ------------------------------------------------------------------------ */
+  .app-body {
+    flex-direction: column;
+  }
+
+  .viewport {
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #canvas {
+    touch-action: none;
+  }
+
+  /* PC向け操作ガイドトーストはスマホでは非表示（キーボードがないため） */
+  .floating-hint {
+    display: none !important;
+  }
+
+  /* ズームバーをボトムバーの上に浮かせて配置 */
+  .zoom-floating-bar {
+    right: 12px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding: 2px 6px;
+    gap: 4px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+  }
+
+  .zoom-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  .zoom-indicator {
+    font-size: 11px;
+    min-width: 38px;
+  }
+
+  .btn-fit-highlight {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. ツールバーのボトムバー（最下部水平バー）化
+     ------------------------------------------------------------------------ */
+  .v-toolbar {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-radius: 0;
+    border-top: 1px solid var(--border-light);
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background-color: var(--bg-surface);
+    box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.08);
+    z-index: 35;
+  }
+
+  .tool-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .tool-divider {
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+  }
+
+  /* タッチデバイスではホバーツールチップは不要 */
+  .tooltip {
+    display: none !important;
+  }
+
+  /* スタイル設定ボタントリガー */
+  .btn-style-toggle {
+    color: var(--color-primary);
+    background-color: var(--color-primary-subtle);
+  }
+
+  /* ------------------------------------------------------------------------
+     4. プロパティサイドバーのボトムシート（引き出しモーダル）化
+     ------------------------------------------------------------------------ */
+  .prop-sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 80vh;
+    max-height: 80dvh;
+    border-radius: 20px 20px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--border-light);
+    background-color: var(--bg-surface);
+    box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.16);
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .prop-sidebar.open {
+    transform: translateY(0);
+  }
+
+  .sidebar-header {
+    padding: 12px 18px;
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-surface);
+    z-index: 10;
+  }
+
+  .sidebar-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 閉じるボタン */
+  .btn-close-sheet {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--bg-subtle);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .btn-close-sheet:hover, .btn-close-sheet:active {
+    background-color: var(--bg-muted);
+    color: var(--text-main);
+  }
+
+  /* キーボードショートカット一覧はスマホでは不要 */
+  .shortcuts-box {
+    display: none !important;
+  }
+
+  /* 背景オーバーレイ */
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
