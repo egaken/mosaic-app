@@ -416,14 +416,59 @@
     // ==========================================
     // 画像ロード
     // ==========================================
-    loadFile(file) {
-      if (!file.type.startsWith('image/')) return;
-      this.imageFileName = file.name.replace(/\.[^/.]+$/, '');
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.loadImageFromDataUrl(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    isHeicFile(file) {
+      if (!file) return false;
+      const type = (file.type || '').toLowerCase();
+      if (type.includes('heic') || type.includes('heif')) return true;
+      const name = (file.name || '').toLowerCase();
+      return /\.(heic|heif)$/i.test(name);
+    }
+
+    async loadFile(file) {
+      if (!file) return;
+      const isHeic = this.isHeicFile(file);
+      const isImage = (file.type && file.type.startsWith('image/')) || isHeic;
+      if (!isImage) {
+        this.showFitToast('⚠️ 対応していないファイル形式です');
+        return;
+      }
+
+      this.imageFileName = file.name ? file.name.replace(/\.[^/.]+$/, '') : 'edited_image';
+
+      if (isHeic) {
+        this.showFitToast('📷 HEIC画像を読み込み中...', 0);
+        try {
+          if (typeof heic2any !== 'function') {
+            throw new Error('HEIC変換ライブラリが利用できません');
+          }
+          const converted = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.94,
+          });
+          const blob = Array.isArray(converted) ? converted[0] : converted;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            this.loadImageFromDataUrl(e.target.result);
+          };
+          reader.onerror = () => {
+            this.showFitToast('❌ 画像の読み込みに失敗しました');
+          };
+          reader.readAsDataURL(blob);
+        } catch (err) {
+          console.error('HEIC conversion error:', err);
+          this.showFitToast('❌ HEICの変換に失敗しました');
+        }
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.loadImageFromDataUrl(e.target.result);
+        };
+        reader.onerror = () => {
+          this.showFitToast('❌ 画像の読み込みに失敗しました');
+        };
+        reader.readAsDataURL(file);
+      }
     }
 
     loadImageFromDataUrl(dataUrl) {
@@ -433,7 +478,10 @@
         this.objects = [];
         this.setSelectedId(null);
         this.history.clear();
-        this.fitToScreen();
+        this.fitToScreen(false, true);
+      };
+      img.onerror = () => {
+        this.showFitToast('❌ 画像の展開に失敗しました');
       };
       img.src = dataUrl;
     }
@@ -644,17 +692,25 @@
     }
 
     /**
-     * 画面中央フィット通知トーストの表示
+     * 画面通知トーストの表示（duration: 0で自動消去無効）
      */
-    showFitToast(text = '画面中央にフィットしました') {
+    showFitToast(text = '画面中央にフィットしました', duration = 1500) {
       if (!this.fitToast) return;
       const span = this.fitToast.querySelector('span');
       if (span) span.textContent = text;
       this.fitToast.classList.add('show');
       if (this.fitToastTimer) clearTimeout(this.fitToastTimer);
-      this.fitToastTimer = setTimeout(() => {
-        this.fitToast.classList.remove('show');
-      }, 1500);
+      if (duration > 0) {
+        this.fitToastTimer = setTimeout(() => {
+          this.fitToast.classList.remove('show');
+        }, duration);
+      }
+    }
+
+    hideFitToast() {
+      if (!this.fitToast) return;
+      this.fitToast.classList.remove('show');
+      if (this.fitToastTimer) clearTimeout(this.fitToastTimer);
     }
 
     zoom100(animate = true) {
